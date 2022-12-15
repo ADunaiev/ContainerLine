@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ArrayOfPurchaseRentOrder xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <PurchaseRentOrder>
+    <OrderNumber>1</OrderNumber>
+    <OrderDate>2022-05-22T00:00:00</OrderDate>
+    <Validity>2027-05-22T00:00:00</Validity>
+    <Containers>
+      <Container>
+        <ContNumber>ECMU1234567</ContNumber>
+        <ContWeight>2200</ContWeight>
+        <ContSize>20</ContSize>
+        <ContType>ST</ContType>
+        <MaxWeight>26700</MaxWeight>
+        <Condition>new</Condition>
+      </Container>
+      <Container>
+        <ContNumber>TRLU4327658</ContNumber>
+        <ContWeight>3700</ContWeight>
+        <ContSize>40</ContSize>
+        <ContType>ST</ContType>
+        <MaxWeight>28000</MaxWeight>
+        <Condition>good</Condition>
+      </Container>
+    </Containers>
+    <Supplier>
+      <CompanyName>Lotos Containers</CompanyName>
+      <CompanyCode>12345678</CompanyCode>
+      <CompanyStreet>Pikadilly str. 23</CompanyStreet>
+      <CompanyCity>London</CompanyCity>
+      <CompanyPostalCode>06325</CompanyPostalCode>
+      <CompanyCountry>UK</CompanyCountry>
+      <CompanyPhone>+00123456789</CompanyPhone>
+    </Supplier>
+    <PricePerDay>2</PricePerDay>
+  </PurchaseRentOrder>
+</ArrayOfPurchaseRentOrder>

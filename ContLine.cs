@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography.X509Certificates;
+using System.Xml.Serialization;
+using System.CodeDom;
 
 //Задание GOL Container Line
 //Создать приложение GOL Container Line
@@ -16,10 +19,10 @@ using System.Security.Cryptography.X509Certificates;
 //зарегистрирован, он должен пройти процесс регистрации. 
 //■ При регистрации нужно указать: • логин(нельзя зарегистрировать уже существующий логин); • 
 //пароль;
-
 //■ После входа в систему пользователь может:
 //• Взятие/снятие с учета контейнеров
 //o Добавить новый лот приобретенных/арендованных контейнеров
+
 //▪ Возможность внесения номеров, типов, грузоподъемности, собственника
 //▪ Состояние контейнера
 //▪ Условия приобретения или аренды
@@ -74,56 +77,34 @@ namespace ContainerLine
             LogIn = login;
             Password = password;
         }
-        public static bool operator ==(User left, User right)
-        {
-            return left.LogIn == right.LogIn && left.Password == right.Password;
-        }
-        public static bool operator !=(User left, User right)
-        {
-            return !(left == right);
-        }
         public override string ToString()
         {
             return $"LogIn: {LogIn}, password: {Password}";
         }
     }
-    //public enum ContainerType { ST, HQ, FR, OT }
     static class Global
     {
         public const int DepretiationTime = 60;
 
     }
-    abstract class Container
+    [Serializable]
+    public class Container
     {
         public string ContNumber { get; set; }
+        public int ContWeight { get; set; }
         public int ContSize { get; set; }
         public string ContType { get; set; }
         public double MaxWeight { get; set; }
         public string Condition { get; set; }
+        public Container() { }
         public override string ToString()
         {
-            return $"{ContNumber}/{ContSize}{ContType} {MaxWeight} - {Condition}";
+            return $"{ContNumber}/{ContSize}{ContType}, cont weight: {ContWeight}, " +
+                $"max payload: {MaxWeight}, condition: {Condition}\n";
         }
     }
-    class OurContainer : Container
-    {
-        public Company Owner { get; set; }
-        public double BuyingValue { get; set; } = 0;
-        public double MonthlyCost { get; set; }
-        public DateTime ContractDateStart { get; set; }
-        public DateTime ContractDateEnd { get; set; }
-
-        public void FinReport()
-        { }
-        public override string ToString()
-        {
-            return base.ToString() + $"\n" +
-                $"Owner: {Owner}, buying value: {BuyingValue}, " +
-                $"contract date: {ContractDateStart}, " +
-                $"contract ends: {ContractDateEnd}";
-        }
-    }
-    class Company
+    [Serializable]
+    public class Company
     {
         public string CompanyName { get; set; }
         public string CompanyCode { get; set; }
@@ -132,7 +113,10 @@ namespace ContainerLine
         public string CompanyPostalCode { get; set; }
         public string CompanyCountry { get; set; }
         public string CompanyPhone { get; set; }
+        public Company()
+        {
 
+        }
         public override string ToString()
         {
             return $"Company name: {CompanyName}\n" +
@@ -160,67 +144,101 @@ namespace ContainerLine
         public bool IsPaid { get; set; }
         public DateTime PaymentDate { get; set; }
     }
-    class Expense
+    class Expense { }
+    public abstract class Order
     {
-        public Company supplier { get; set; }
-        public bool IsPaid { get; set; }
-        public DateTime PaymentDate { get; set; }
-    }
-    abstract class Contract
-    {
-        public Company Counterparty { get; set; }
-        public string ContractNumber { get; set; }
-        public DateTime ContractDate { get; set; }
+        public string OrderNumber { get; set; }
+        public DateTime OrderDate { get; set; }
         public DateTime Validity { get; set; }
-    }
+        public List<Container> Containers { get; set; }
+        public override string ToString()
+        {
+            StringBuilder stringBuilder= new StringBuilder();
+            stringBuilder.Append($"Order: {OrderNumber}, from: {OrderDate.ToShortDateString()}, " +
+                $"valid till: {Validity.ToShortDateString()}\nContainers:\n");
 
-    interface IContract
-    {
-        List<OurContainer> containers { get; set; }
-        bool IsActive();
-        void SetContainers();
-    }
-    class PurchaseContract : Contract, IContract
-    {
-        public List<OurContainer> containers { get; set; }
-        public PurchaseContract() { }
-        public double Amount { get; set; }
-        public bool IsActive()
-        {
-            if (DateTime.Today <= Validity && DateTime.Today >= ContractDate )
-                return true;
-            else 
-                return false;
-        }
-        public void SetContainers()
-        {
-            for (int i = 0; i < containers.Count; i++)
+            foreach (var cont in Containers)
             {
-                containers[i].Owner = Counterparty;
-                if (containers.Count> 0)
-                    containers[i].BuyingValue = Amount / containers.Count;
-                containers[i].MonthlyCost =  
-                    containers[i].BuyingValue/ containers.Count;
-                containers[i].ContractDateStart = ContractDate;
-                containers[i].ContractDateEnd = Validity;
+                stringBuilder.Append( cont );
             }
+            return stringBuilder.ToString();
         }
-
     }
-    //class RentContractSupplier : Contract, IContract
-    //{
-
-    //}
-    //class SalesContract : Contract, IContract
-    //{
-
-    //}
-
-
-    internal class Program
+    [Serializable]
+    public class PurchaseRentOrder: Order
     {
+        public Company Supplier { get; set; }
+        public decimal PricePerDay { get; set; }
+        public PurchaseRentOrder(Company supplier, string orderNumber, DateTime orderDate,
+            decimal price, DateTime validity, List<Container> containers)
+        {
+            Supplier = supplier;
+            OrderNumber = orderNumber;
+            OrderDate = orderDate;
+            PricePerDay = price;
+            Validity = validity;
+            Containers = containers;
+        }
+        public PurchaseRentOrder()
+        {
 
+        }
+        public override string ToString()
+        {
+            return base.ToString() + $"\nSupplier: {Supplier}, price per day: {PricePerDay}";
+        }
+    }
+    [Serializable]
+    public class SalesOrder : Order
+    {
+        public Company Seller { get; set; } 
+        public decimal SellerPrice { get; set; }
 
+        public SalesOrder(Company seller, decimal sellerPrice, string orderNumber, DateTime orderDate,
+            DateTime validity, List<Container> containers)
+        {
+            Seller = seller;
+            SellerPrice = sellerPrice;
+            OrderNumber = orderNumber;
+            OrderDate = orderDate;
+            Validity = validity;
+            Containers = containers;
+        }
+        public SalesOrder()
+        {
+
+        }
+        public override string ToString()
+        {
+            return base.ToString() + $"\nSeller: {Seller}, seller price: {SellerPrice}";
+        }
+    }
+    [Serializable]
+    public class CustomerRentOrder: Order
+    {
+        public Company Customer { get; set; }
+        public decimal PricePerDay { get; set; }
+        public CustomerRentOrder(Company customer, decimal pricePerDay, string orderNumber, 
+            DateTime orderDate, DateTime validity, List<Container> containers)
+        {
+            Customer = customer;
+            PricePerDay = pricePerDay;
+            OrderNumber = orderNumber;
+            OrderDate = orderDate;
+            Validity= validity;
+            Containers = containers;
+        }
+        public CustomerRentOrder()
+        {
+
+        }
+        public override string ToString()
+        {
+            return base.ToString() + $"\nCustomer: {Customer}, price per day: {PricePerDay}";
+        }
+    }
+    internal class ContLine
+    {
         static int StartMenu()
         {
             Console.Clear();
@@ -245,13 +263,16 @@ namespace ContainerLine
         }
         static int MainMenu()
         {
+            Console.Clear();
             Console.WriteLine("\nPlease make your choice: ");
-            Console.WriteLine("\n1. Create new contract in database");
-            Console.WriteLine("2. View all existing contracts");
-            Console.WriteLine("3. Close existing contract");
-            Console.WriteLine("4. View all active containers");
-            Console.WriteLine("5. Find contract/container");
-            Console.WriteLine("6. Create financial report");
+            Console.WriteLine("\n1. Create new Rent Order in database");
+            Console.WriteLine("2. View all existing Rent Orders");
+            Console.WriteLine("3. Create new Sale Order in database");
+            Console.WriteLine("4. View all existing Sale Orders");
+            Console.WriteLine("5. Close existing contract");
+            Console.WriteLine("6. View all active containers");
+            Console.WriteLine("7. Find contract/container");
+            Console.WriteLine("8. Create financial report");
 
             Console.WriteLine("0. Exit application\n");
             Console.Write("Your choice: ");
@@ -284,7 +305,7 @@ namespace ContainerLine
         {
             foreach (var item in users)
             {
-                if (item == user)
+                if (item.LogIn == user.LogIn && item.Password == user.Password)
                 {
                     return true;                    
                 }
@@ -308,7 +329,7 @@ namespace ContainerLine
         {
             List<User> users = new List<User>();
 
-            FileStream streamLoad = new FileStream("Users.bin", FileMode.Open);
+            FileStream streamLoad = new FileStream("../../Users.bin", FileMode.Open);
             BinaryFormatter formatterLoad = new BinaryFormatter();
 
             users = (List<User>)formatterLoad.Deserialize(streamLoad);
@@ -316,6 +337,24 @@ namespace ContainerLine
             streamLoad.Close();
             Console.WriteLine("Загрузка из файла успешно выполнена!");
             return users;
+        }
+        static List<PurchaseRentOrder> LoadPurchaseRentOrderFromFile()
+        {
+            List<PurchaseRentOrder> temp = new List<PurchaseRentOrder>();
+            FileStream stream = new FileStream("../../PurchaseRentOrder.xml", FileMode.Open);
+            XmlSerializer serializer = new XmlSerializer(typeof(List<PurchaseRentOrder>));
+            temp = (List<PurchaseRentOrder>)serializer.Deserialize(stream);
+            stream.Close();
+            return temp;
+        }
+        static List<SalesOrder> LoadSalesOrdersFromFile()
+        {
+            List<SalesOrder> temp = new List<SalesOrder>();
+            FileStream stream2 = new FileStream("../../SalesOrders.xml", FileMode.Open);
+            XmlSerializer serializer = new XmlSerializer(typeof(List<SalesOrder>));
+            temp = (List<SalesOrder>)serializer.Deserialize(stream2);
+            stream2.Close();
+            return temp;
         }
         static Company NewCompany(List<Company> companies) 
         { 
@@ -346,9 +385,9 @@ namespace ContainerLine
 
             return company;
         }
-        static List<OurContainer> NewContLot() 
+        static List<Container> NewContLot() 
         {
-            List<OurContainer> containers = new List<OurContainer>();
+            List<Container> containers = new List<Container>();
 
             Console.WriteLine("Enter information about containers:");
             int count = 1; int temp;
@@ -362,10 +401,13 @@ namespace ContainerLine
                 if (temp == 0)
                     break;
 
-                OurContainer container = new OurContainer();
+                Container container = new Container();
 
                 Console.Write("Enter container number: ");
                 container.ContNumber = Console.ReadLine();
+
+                Console.Write("Enter container weight: ");
+                container.ContWeight = Convert.ToInt32(Console.ReadLine());
 
                 Console.Write("Enter container size: ");
                 container.ContSize = Convert.ToInt32(Console.ReadLine());
@@ -385,25 +427,47 @@ namespace ContainerLine
 
             return containers; 
         }
-        static PurchaseContract NewPurchaseContract(Company company, List<OurContainer> contList)
+        static PurchaseRentOrder NewPurchaseRentOrder(Company company, List<Container> contList)
         {
-            PurchaseContract contract = new PurchaseContract();
+            PurchaseRentOrder RentOrder = new PurchaseRentOrder();
 
-            contract.Counterparty = company;
-            contract.containers= contList;
+            RentOrder.Supplier = company;
+            RentOrder.Containers = contList;
 
-            Console.Write("Please enter number of contract: ");
-            contract.ContractNumber = Console.ReadLine();
+            Console.Write("Please enter number of order: ");
+            RentOrder.OrderNumber = Console.ReadLine();
 
-            Console.Write("Please enter contract date: ");
-            contract.ContractDate = Convert.ToDateTime(Console.ReadLine());
+            Console.Write("Please enter order date: ");
+            RentOrder.OrderDate = Convert.ToDateTime(Console.ReadLine());
 
             Console.Write("Please enter validity date: ");
-            contract.Validity = Convert.ToDateTime(Console.ReadLine());
+            RentOrder.Validity = Convert.ToDateTime(Console.ReadLine());
 
-            contract.SetContainers();
+            Console.Write("Please enter price per date: ");
+            RentOrder.PricePerDay = Convert.ToDecimal(Console.ReadLine());
 
-            return contract;
+            return RentOrder;
+        }
+        static SalesOrder NewSalesOrder(Company company, List<Container> contList)
+        {
+            SalesOrder saleOrder = new SalesOrder();
+
+            saleOrder.Seller = company;
+            saleOrder.Containers = contList;
+
+            Console.Write("Please enter number of order: ");
+            saleOrder.OrderNumber = Console.ReadLine();
+
+            Console.Write("Please enter order date: ");
+            saleOrder.OrderDate = Convert.ToDateTime(Console.ReadLine());
+
+            Console.Write("Please enter validity date: ");
+            saleOrder.Validity = Convert.ToDateTime(Console.ReadLine());
+
+            Console.Write("Please enter price of container: ");
+            saleOrder.SellerPrice = Convert.ToDecimal(Console.ReadLine());
+
+            return saleOrder;
         }
         private static void Main(string[] args)
         {
@@ -411,14 +475,19 @@ namespace ContainerLine
             {            
                 FileStream stream = null;
                 BinaryFormatter formatter = null;
-                List<User> users = new List<User>();
 
-                List<OurContainer> ListOfContainers = new List<OurContainer>();
-                List<PurchaseContract> purchaseContracts = new List<PurchaseContract>();
+                List<User> users = new List<User>();
+                users = LoadUsersFromFile();
+
+                List<Container> ListOfContainers = new List<Container>();
                 List<Company> companies = new List<Company>();
 
-                users = LoadUsersFromFile();
-                
+                List<PurchaseRentOrder> purchaseRentOrders = new List<PurchaseRentOrder>();
+                purchaseRentOrders = LoadPurchaseRentOrderFromFile();
+
+                List<SalesOrder> salesOrders = new List<SalesOrder>();
+                salesOrders = LoadSalesOrdersFromFile();
+
                 while (true)
                 {
                     switch (StartMenu())
@@ -433,15 +502,65 @@ namespace ContainerLine
                                 {
                                     temp = MainMenu();
                                     if (temp == 0)
+                                    {
+                                        stream = new FileStream("../../PurchaseRentOrder.xml", FileMode.Create);
+                                        XmlSerializer serPurchaseOrders = new XmlSerializer(typeof(List<PurchaseRentOrder>));
+                                        serPurchaseOrders.Serialize(stream, purchaseRentOrders);
+                                        stream.Close();
+                                        Console.WriteLine("RentOrders saved!");
+
+                                        stream = new FileStream("../../SalesOrders.xml", FileMode.Create);
+                                        XmlSerializer serSalesOrders = new XmlSerializer(typeof(List<SalesOrder>));
+                                        serSalesOrders.Serialize(stream, salesOrders);
+                                        stream.Close();
+                                        Console.WriteLine("SalesOrders saved!");
+
+
+                                        Console.ReadKey();
                                         break;
+                                    }
 
                                     switch(temp)
                                     {
-                                        case 1:                                           
-                                            NewPurchaseContract(NewCompany(companies), NewContLot());
-                                            Console.WriteLine("New contract added successfully!");
+                                        case 1: 
+                                            purchaseRentOrders.Add(NewPurchaseRentOrder(NewCompany(companies), NewContLot()));
+                                            Console.WriteLine("\nNew Rent Order added successfully!");
                                             break;
-
+                                        case 2:
+                                            foreach (var item in purchaseRentOrders)
+                                            {
+                                                Console.WriteLine(item);
+                                            }
+                                            Console.ReadKey();
+                                            break;
+                                        case 3:
+                                            salesOrders.Add(NewSalesOrder(NewCompany(companies), NewContLot()));
+                                            Console.WriteLine("\nNew Sale Order added successfully!");
+                                            break;
+                                        case 4:
+                                            foreach (var item in salesOrders)
+                                            {
+                                                Console.WriteLine(item);
+                                            }
+                                            Console.ReadKey();
+                                            break;
+                                        case 6:
+                                            foreach (var item in purchaseRentOrders)
+                                            {
+                                                foreach (var cont in item.Containers)
+                                                {
+                                                    Console.Write(cont);
+                                                }
+                                            }
+                                            foreach (var item in salesOrders)
+                                            {
+                                                foreach (var cont in item.Containers)
+                                                {
+                                                    Console.Write(cont);
+                                                }
+                                            }
+                                            Console.ReadKey();
+                                            break;
                                     }
                                     
                                 }
@@ -455,7 +574,7 @@ namespace ContainerLine
                             Console.ReadKey();
                             break;
                         case 0:
-                            stream = new FileStream("Users.bin", FileMode.Create);
+                            stream = new FileStream("../../Users.bin", FileMode.Create);
                             formatter = new BinaryFormatter();
 
                             formatter.Serialize(stream, users);

@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ArrayOfSalesOrder xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <SalesOrder>
+    <OrderNumber>1</OrderNumber>
+    <OrderDate>2022-10-23T00:00:00</OrderDate>
+    <Validity>2027-10-23T00:00:00</Validity>
+    <Containers>
+      <Container>
+        <ContNumber>MSKU1234567</ContNumber>
+        <ContWeight>3900</ContWeight>
+        <ContSize>40</ContSize>
+        <ContType>HQ</ContType>
+        <MaxWeight>29100</MaxWeight>
+        <Condition>new</Condition>
+      </Container>
+      <Container>
+        <ContNumber>FSCU2345543</ContNumber>
+        <ContWeight>3950</ContWeight>
+        <ContSize>40</ContSize>
+        <ContType>HQ</ContType>
+        <MaxWeight>28900</MaxWeight>
+        <Condition>new</Condition>
+      </Container>
+    </Containers>
+    <Seller>
+      <CompanyName>XBO Box</CompanyName>
+      <CompanyCode>777</CompanyCode>
+      <CompanyStreet>Colorado 2</CompanyStreet>
+      <CompanyCity>Oklahoma</CompanyCity>
+      <CompanyPostalCode>01234</CompanyPostalCode>
+      <CompanyCountry>USA</CompanyCountry>
+      <CompanyPhone>+2345325</CompanyPhone>
+    </Seller>
+    <SellerPrice>4500</SellerPrice>
+  </SalesOrder>
+</ArrayOfSalesOrder>

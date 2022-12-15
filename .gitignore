@@ -3,3 +3,5 @@ ContainerLine.csproj
 Properties/
 bin/
 obj/
+PurchaseContacts.xml
+packages.config
