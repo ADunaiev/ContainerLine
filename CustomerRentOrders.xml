@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<ArrayOfCustomerRentOrder xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <CustomerRentOrder>
+    <OrderNumber>1</OrderNumber>
+    <OrderDate>2022-06-10T00:00:00</OrderDate>
+    <Validity>2022-09-10T00:00:00</Validity>
+    <Containers>
+      <Container>
+        <ContNumber>ECMU1234567</ContNumber>
+        <ContWeight>2200</ContWeight>
+        <ContSize>20</ContSize>
+        <ContType>ST</ContType>
+        <MaxWeight>26700</MaxWeight>
+        <Condition>new</Condition>
+      </Container>
+    </Containers>
+    <Customer>
+      <CompanyName>QQQ</CompanyName>
+      <CompanyCode>123321432</CompanyCode>
+      <CompanyStreet>Gorazio</CompanyStreet>
+      <CompanyCity>Brno</CompanyCity>
+      <CompanyPostalCode>03421</CompanyPostalCode>
+      <CompanyCountry>Chech</CompanyCountry>
+      <CompanyPhone>+234111234</CompanyPhone>
+    </Customer>
+    <PricePerDay>3</PricePerDay>
+  </CustomerRentOrder>
+</ArrayOfCustomerRentOrder>
