@@ -1,2 +1,12 @@
 <?xml version="1.0"?>
-<ArrayOfCompany xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+<ArrayOfCompany xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Company>
+    <CompanyName>Kaktus</CompanyName>
+    <CompanyCode>9345136</CompanyCode>
+    <CompanyStreet>Kievska 34</CompanyStreet>
+    <CompanyCity>Odessa</CompanyCity>
+    <CompanyPostalCode>06005</CompanyPostalCode>
+    <CompanyCountry>Ukraine</CompanyCountry>
+    <CompanyPhone>+2342166774</CompanyPhone>
+  </Company>
+</ArrayOfCompany>

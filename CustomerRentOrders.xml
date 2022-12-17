@@ -14,6 +14,7 @@
         <Condition>new</Condition>
       </Container>
     </Containers>
+    <orderStatus>open</orderStatus>
     <Customer>
       <CompanyName>QQQ</CompanyName>
       <CompanyCode>123321432</CompanyCode>
@@ -24,5 +25,41 @@
       <CompanyPhone>+234111234</CompanyPhone>
     </Customer>
     <PricePerDay>3</PricePerDay>
+    <CloseDate>2022-11-11T00:00:00</CloseDate>
+  </CustomerRentOrder>
+  <CustomerRentOrder>
+    <OrderNumber>2</OrderNumber>
+    <OrderDate>2022-07-30T00:00:00</OrderDate>
+    <Validity>2022-09-30T00:00:00</Validity>
+    <Containers>
+      <Container>
+        <ContNumber>FSCU2345543</ContNumber>
+        <ContWeight>3950</ContWeight>
+        <ContSize>40</ContSize>
+        <ContType>HQ</ContType>
+        <MaxWeight>28900</MaxWeight>
+        <Condition>new</Condition>
+      </Container>
+      <Container>
+        <ContNumber>MSKU1234567</ContNumber>
+        <ContWeight>3900</ContWeight>
+        <ContSize>40</ContSize>
+        <ContType>HQ</ContType>
+        <MaxWeight>29100</MaxWeight>
+        <Condition>new</Condition>
+      </Container>
+    </Containers>
+    <orderStatus>open</orderStatus>
+    <Customer>
+      <CompanyName>Kaktus</CompanyName>
+      <CompanyCode>9345136</CompanyCode>
+      <CompanyStreet>Kievska 34</CompanyStreet>
+      <CompanyCity>Odessa</CompanyCity>
+      <CompanyPostalCode>06005</CompanyPostalCode>
+      <CompanyCountry>Ukraine</CompanyCountry>
+      <CompanyPhone>+2342166774</CompanyPhone>
+    </Customer>
+    <PricePerDay>4</PricePerDay>
+    <CloseDate>0001-01-01T00:00:00</CloseDate>
   </CustomerRentOrder>
 </ArrayOfCustomerRentOrder>

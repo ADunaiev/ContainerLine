@@ -68,6 +68,24 @@ using System.CodeDom;
 
 namespace ContainerLine
 {
+    public enum OrderStatus { open, closed}
+    public class Counter
+    {
+        public int counter = 0;
+        public Counter(int num)
+        {
+            counter = num;
+        }
+        public Counter()
+        {
+
+        }
+        public static Counter operator ++(Counter counter)
+        {
+            counter.counter++;
+            return counter;
+        }
+    }
     [Serializable]
     public class User
     {
@@ -143,11 +161,16 @@ namespace ContainerLine
                 $"{CompanyCountry}, {CompanyPhone}";
         }
     }
-    abstract class FinDocument
+    [Serializable]
+    public class FinDocument:IComparable<FinDocument> 
     {
-        public string DocumentNumber { get; set; }
+        public int DocumentNumber { get; set; }
         public DateTime DocumentDate { get; set; }
-        public double DocumentAmount { get; set; }
+        public decimal DocumentAmount { get; set; }
+        public int CompareTo(FinDocument other)
+        {
+            return DocumentDate.CompareTo(other.DocumentDate);
+        }
         public override string ToString()
         {
             return $"Document number: {DocumentNumber}, " +
@@ -155,28 +178,56 @@ namespace ContainerLine
                 $"amount: {DocumentAmount}";
         }
     }
-    class Income : FinDocument
+    [Serializable]
+    public class Income : FinDocument
     {
-        public Company customer { get; set; }
-        public bool IsPaid { get; set; }
-        public DateTime PaymentDate { get; set; }
+        public Income(int number, DateTime date, CustomerRentOrder custRentOrder)
+        {
+
+            DocumentAmount = custRentOrder.PricePerDay *
+                (custRentOrder.Validity - custRentOrder.OrderDate).Days;
+        }
+        public Income()
+        {
+
+        }
+        public override string ToString()
+        {
+            return base.ToString();
+        }
     }
-    class Expense { }
+    [Serializable]
+    public class Expense : FinDocument
+    {
+        public Expense(int number, DateTime date, PurchaseRentOrder rentOrder)
+        {
+            DocumentNumber = number;
+            DocumentDate = date;
+            DocumentAmount = rentOrder.PricePerDay * 
+                (date - DocumentDate).Days; 
+        }
+        public Expense() { }
+        public override string ToString()
+        {
+            return base.ToString();
+        }
+    }
     public abstract class Order
     {
-        public string OrderNumber { get; set; }
+        public int OrderNumber { get; set; }
         public DateTime OrderDate { get; set; }
         public DateTime Validity { get; set; }
         public List<Container> Containers { get; set; }
+        public OrderStatus orderStatus { get; set; } = OrderStatus.open;
         public override string ToString()
         {
             StringBuilder stringBuilder= new StringBuilder();
             stringBuilder.Append($"Order: {OrderNumber}, from: {OrderDate.ToShortDateString()}, " +
-                $"valid till: {Validity.ToShortDateString()}\nContainers:\n");
+                $"valid till: {Validity.ToShortDateString()}, status: {orderStatus}\nContainers:\n");
 
             foreach (var cont in Containers)
             {
-                stringBuilder.Append( cont );
+                stringBuilder.Append( cont + "\n");
             }
             return stringBuilder.ToString();
         }
@@ -186,7 +237,7 @@ namespace ContainerLine
     {
         public Company Supplier { get; set; }
         public decimal PricePerDay { get; set; }
-        public PurchaseRentOrder(Company supplier, string orderNumber, DateTime orderDate,
+        public PurchaseRentOrder(Company supplier, int orderNumber, DateTime orderDate,
             decimal price, DateTime validity, List<Container> containers)
         {
             Supplier = supplier;
@@ -200,6 +251,7 @@ namespace ContainerLine
         {
 
         }
+
         public override string ToString()
         {
             return base.ToString() + $"\nSupplier: {Supplier}, price per day: {PricePerDay}";
@@ -211,7 +263,7 @@ namespace ContainerLine
         public Company Seller { get; set; } 
         public decimal SellerPrice { get; set; }
 
-        public SalesOrder(Company seller, decimal sellerPrice, string orderNumber, DateTime orderDate,
+        public SalesOrder(Company seller, decimal sellerPrice, int orderNumber, DateTime orderDate,
             DateTime validity, List<Container> containers)
         {
             Seller = seller;
@@ -220,10 +272,11 @@ namespace ContainerLine
             OrderDate = orderDate;
             Validity = validity;
             Containers = containers;
+            orderStatus = OrderStatus.closed;
         }
         public SalesOrder()
         {
-
+            orderStatus= OrderStatus.closed;
         }
         public override string ToString()
         {
@@ -235,7 +288,8 @@ namespace ContainerLine
     {
         public Company Customer { get; set; }
         public decimal PricePerDay { get; set; }
-        public CustomerRentOrder(Company customer, decimal pricePerDay, string orderNumber, 
+        public DateTime CloseDate { get; set; }
+        public CustomerRentOrder(Company customer, decimal pricePerDay, int orderNumber, 
             DateTime orderDate, DateTime validity, List<Container> containers)
         {
             Customer = customer;
@@ -251,11 +305,13 @@ namespace ContainerLine
         }
         public override string ToString()
         {
-            return base.ToString() + $"\nCustomer: {Customer}, price per day: {PricePerDay}";
+            return base.ToString() + $"\nCustomer: {Customer}, price per day: {PricePerDay}, " +
+                $"close date: {CloseDate.ToShortDateString()}";
         }
     }
     internal class ContLine
     {
+
         static int StartMenu()
         {
             Console.Clear();
@@ -284,16 +340,18 @@ namespace ContainerLine
             Console.WriteLine("\nPlease make your choice: ");
             Console.WriteLine("\n1. Create new Rent Order in database");
             Console.WriteLine("2. View all existing Rent Orders");
-            Console.WriteLine("3. Create new Sale Order in database");
-            Console.WriteLine("4. View all existing Sale Orders");
-            Console.WriteLine("5. Create new Customer Rent Order in database");
-            Console.WriteLine("6. View all existing Customer Rent Orders");
-            Console.WriteLine("7. Close existing contract");
-            Console.WriteLine("8. View container park");
-            Console.WriteLine("9. Find contract/container");
-            Console.WriteLine("10. Create financial report");
+            Console.WriteLine("3. Close Rent Order");
+            Console.WriteLine("4. Create new Sale Order in database");
+            Console.WriteLine("5. View all existing Sale Orders");
+            Console.WriteLine("6. Close Sale Order");
+            Console.WriteLine("7. Create new Customer Rent Order in database");
+            Console.WriteLine("8. View all existing Customer Rent Orders");
+            Console.WriteLine("9. Close Customer Rent Order");
+            Console.WriteLine("10. View container park");
+            Console.WriteLine("11. Find container");
+            Console.WriteLine("12. Create financial report");
 
-            Console.WriteLine("0. Exit application\n");
+            Console.WriteLine("0. Exit main menu\n");
             Console.Write("Your choice: ");
             return Convert.ToInt32(Console.ReadLine());
         }
@@ -393,6 +451,24 @@ namespace ContainerLine
             stream.Close();
             return temp;
         }
+        static List<Income> LoadIncomesFromFile()
+        {
+            List<Income> temp = new List<Income>();
+            FileStream stream = new FileStream("../../Incomes.xml", FileMode.Open);
+            XmlSerializer serializer = new XmlSerializer(typeof(List<Income>));
+            temp = (List<Income>)serializer.Deserialize(stream);
+            stream.Close();
+            return temp;
+        }
+        static List<Expense> LoadExpensesFromFile()
+        {
+            List<Expense> temp = new List<Expense>();
+            FileStream stream = new FileStream("../../Expenses.xml", FileMode.Open);
+            XmlSerializer serializer = new XmlSerializer(typeof(List<Expense>));
+            temp = (List<Expense>)serializer.Deserialize(stream);
+            stream.Close();
+            return temp;
+        }
         static Company NewCompany() 
         { 
             Company company = new Company();
@@ -470,7 +546,7 @@ namespace ContainerLine
             RentOrder.Containers = contList;
 
             Console.Write("Please enter number of order: ");
-            RentOrder.OrderNumber = Console.ReadLine();
+            RentOrder.OrderNumber = Convert.ToInt32(Console.ReadLine());
 
             Console.Write("Please enter order date: ");
             RentOrder.OrderDate = Convert.ToDateTime(Console.ReadLine());
@@ -491,7 +567,7 @@ namespace ContainerLine
             saleOrder.Containers = contList;
 
             Console.Write("Please enter number of order: ");
-            saleOrder.OrderNumber = Console.ReadLine();
+            saleOrder.OrderNumber = Convert.ToInt32(Console.ReadLine());
 
             Console.Write("Please enter order date: ");
             saleOrder.OrderDate = Convert.ToDateTime(Console.ReadLine());
@@ -542,7 +618,7 @@ namespace ContainerLine
                 customerRentOrder.Containers = cont;
 
                 Console.Write("Please enter number of order: ");
-                customerRentOrder.OrderNumber = Console.ReadLine();
+                customerRentOrder.OrderNumber = Convert.ToInt32(Console.ReadLine());
 
                 Console.Write("Please enter order date: ");
                 customerRentOrder.OrderDate = Convert.ToDateTime(Console.ReadLine());
@@ -554,6 +630,20 @@ namespace ContainerLine
                 customerRentOrder.PricePerDay = Convert.ToDecimal(Console.ReadLine()); ;
             }
             return customerRentOrder;
+        }
+        static Income CloseCustomerRentOrder(SortedList<Container, string> containerPark, 
+            CustomerRentOrder customerRentOrder, int number, DateTime closeDate)
+        {
+            Income income = new Income(number, closeDate, customerRentOrder);
+            
+            customerRentOrder.CloseDate = closeDate;
+
+            foreach (var cont in customerRentOrder.Containers)
+            {
+                containerPark[cont] = "free";
+            }
+
+            return income;
         }
         static void AddContsToPark(SortedList<Container, string> keyValuePairs, List<Container> contList)
         {
@@ -582,7 +672,10 @@ namespace ContainerLine
         private static void Main(string[] args)
         {
             try
-            {            
+            {   
+                Counter incomesCounter = new Counter();
+                Counter expenseCounter = new Counter();
+
                 FileStream stream = null;
                 BinaryFormatter formatter = null;
 
@@ -617,6 +710,12 @@ namespace ContainerLine
 
                 List<Company> companies = new List<Company>();
                 companies = LoadCompaniesFromFile();
+
+                List<Income> incomes = new List<Income>();
+                incomes = LoadIncomesFromFile();
+
+                List<Expense> expenses = new List<Expense>();
+                expenses = LoadExpensesFromFile();
 
                 while (true)
                 {
@@ -657,6 +756,18 @@ namespace ContainerLine
                                         stream.Close();
                                         Console.WriteLine("Companies saved!");
 
+                                        stream = new FileStream("../../Incomes.xml", FileMode.Create);
+                                        XmlSerializer serIncomes = new XmlSerializer(typeof(List<Income>));
+                                        serIncomes.Serialize(stream, incomes);
+                                        stream.Close();
+                                        Console.WriteLine("Incomes saved!");
+
+                                        stream = new FileStream("../../Expenses.xml", FileMode.Create);
+                                        XmlSerializer serExpenses = new XmlSerializer(typeof(List<Expense>));
+                                        serExpenses.Serialize(stream, expenses);
+                                        stream.Close();
+                                        Console.WriteLine("Expenses saved!");
+
                                         Console.ReadKey();
                                         break;
                                     }
@@ -678,7 +789,7 @@ namespace ContainerLine
                                             }
                                             Console.ReadKey();
                                             break;
-                                        case 3:
+                                        case 4:
                                             List<Container> conts = NewContLot();
                                             Company company2 = NewCompany();
                                             salesOrders.Add(NewSalesOrder(company2, conts));
@@ -686,14 +797,14 @@ namespace ContainerLine
                                             companies.Add(company2);
                                             Console.WriteLine("\nNew Sale Order added successfully!");
                                             break;
-                                        case 4:
+                                        case 5:
                                             foreach (var item in salesOrders)
                                             {
                                                 Console.WriteLine(item);
                                             }
                                             Console.ReadKey();
                                             break;
-                                        case 5:
+                                        case 7:
                                             Company company3 = NewCompany();
                                             CustomerRentOrder cro = NewCustomerRentOrder(ContainerPark, company3);
                                             if (cro != null)
@@ -702,15 +813,34 @@ namespace ContainerLine
                                                 companies.Add(company3);
                                             }
                                             break;
-                                        case 6:
+                                        case 8:
                                             foreach (var order in customerRentOrders)
                                             {
-                                                Console.WriteLine(order);
+                                                Console.WriteLine(order + "\n");
                                             }
                                             Console.ReadKey();
                                             break;
+                                        case 9:
+                                            Console.WriteLine("Please enter Customer Rent Order number: ");
+                                            int number = Convert.ToInt32((Console.ReadLine()));
 
-                                        case 8:
+                                            Console.WriteLine("Please enter Close date: ");
+                                            DateTime closeDate = Convert.ToDateTime((Console.ReadLine()));
+
+                                            CustomerRentOrder var = customerRentOrders.Find(x => x.OrderNumber == number);
+
+                                            if (var != null)
+                                            {
+
+                                                incomes.Add(CloseCustomerRentOrder(ContainerPark, var, number, closeDate));
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("Customer Rent Order is not found!");
+                                            }
+
+                                            break;
+                                        case 10:
                                             foreach (var cont in ContainerPark)
                                             {
                                                 Console.WriteLine(cont.Key + " Status: " + cont.Value);
@@ -736,7 +866,7 @@ namespace ContainerLine
                             formatter.Serialize(stream, users);
                             
                             stream.Close();
-                            Console.WriteLine("Данные о пользователях сохранены!");
+                            Console.WriteLine("Users data saved!");
                             Console.ReadKey();
                             return;
                     }
@@ -747,10 +877,6 @@ namespace ContainerLine
             {
                 Console.WriteLine(ex.Message); 
             }
-
-            //Company GOLLT = new Company("Global Ocean Link Lithuania",
-            //        304584502, "Ateites 31b", "Vilnius", "LT", "06326",
-            //        "Lithuania", "+370-521-43-241");
         }
     }
 }
