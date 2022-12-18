@@ -103,7 +103,7 @@ namespace ContainerLine
     }
     static class Global
     {
-        public const int DepretiationTime = 60;
+        public const int DepretiationTime = 7 * 365;
 
     }
     [Serializable]
@@ -174,8 +174,8 @@ namespace ContainerLine
         public override string ToString()
         {
             return $"Document number: {DocumentNumber}, " +
-                $"date: {DocumentDate}, " +
-                $"amount: {DocumentAmount}";
+                $"date: {DocumentDate.ToShortDateString()}, " +
+                $"amount: {Math.Round(DocumentAmount, 2)}";
         }
     }
     [Serializable]
@@ -183,9 +183,16 @@ namespace ContainerLine
     {
         public Income(int number, DateTime date, CustomerRentOrder custRentOrder)
         {
-
+            DocumentNumber= number;
+            DocumentDate= date;
             DocumentAmount = custRentOrder.PricePerDay *
                 (custRentOrder.Validity - custRentOrder.OrderDate).Days;
+        }
+        public Income(DateTime startDate, DateTime endDate, CustomerRentOrder custRentOrder)
+        {
+            DocumentNumber = 0;
+            DocumentDate= endDate;
+            DocumentAmount = (endDate - startDate).Days * custRentOrder.PricePerDay;
         }
         public Income()
         {
@@ -205,6 +212,23 @@ namespace ContainerLine
             DocumentDate = date;
             DocumentAmount = rentOrder.PricePerDay * 
                 (date - DocumentDate).Days; 
+        }
+        public Expense(DateTime startDate, DateTime endDate, PurchaseRentOrder rentOrder)
+        {
+            DocumentNumber = 0;
+            DocumentDate = endDate;
+            DateTime tempDate = startDate > rentOrder.CloseDate ? startDate : rentOrder.CloseDate;
+            DocumentAmount = rentOrder.PricePerDay * (endDate - tempDate).Days;
+        }
+        public Expense(SalesOrder salesOrder, DateTime startDate, DateTime endDate)
+        {
+            DocumentNumber = 0;
+            DateTime startTemp = startDate >= salesOrder.OrderDate ? startDate : salesOrder.OrderDate;
+            DateTime endTemp = endDate <= salesOrder.OrderDate.AddDays(Global.DepretiationTime) ?
+                endDate : salesOrder.OrderDate.AddDays(Global.DepretiationTime);
+            DocumentDate = endTemp;
+            decimal price = salesOrder.SellerPrice / Global.DepretiationTime;
+            DocumentAmount = (endTemp- startTemp).Days * price;
         }
         public Expense() { }
         public override string ToString()
@@ -237,6 +261,7 @@ namespace ContainerLine
     {
         public Company Supplier { get; set; }
         public decimal PricePerDay { get; set; }
+        public DateTime CloseDate { get; set; } 
         public PurchaseRentOrder(Company supplier, int orderNumber, DateTime orderDate,
             decimal price, DateTime validity, List<Container> containers)
         {
@@ -254,7 +279,8 @@ namespace ContainerLine
 
         public override string ToString()
         {
-            return base.ToString() + $"\nSupplier: {Supplier}, price per day: {PricePerDay}";
+            return base.ToString() + $"\nSupplier: {Supplier}, price per day: {PricePerDay}, " +
+                $"close date: {CloseDate.ToShortDateString()}";
         }
     }
     [Serializable]
@@ -645,6 +671,20 @@ namespace ContainerLine
 
             return income;
         }
+        static Expense ClosePurchaseRentOrder(SortedList<Container, string> containerPark,
+            PurchaseRentOrder purchaseRentOrder, int number, DateTime closeDate)
+        {
+            Expense expense = new Expense(number, closeDate, purchaseRentOrder);
+
+            purchaseRentOrder.CloseDate = closeDate;
+
+            foreach (var cont in purchaseRentOrder.Containers)
+            {
+                containerPark.Remove(cont);
+            }
+
+            return expense;
+        }
         static void AddContsToPark(SortedList<Container, string> keyValuePairs, List<Container> contList)
         {
             foreach (var cont in contList)
@@ -702,9 +742,12 @@ namespace ContainerLine
                 }
                 foreach (var order in customerRentOrders)
                 {
-                    foreach (var cont in order.Containers)
+                    if (order.CloseDate == default)
                     {
-                        ContainerPark[cont] = "booked";
+                        foreach (var cont in order.Containers)
+                        {
+                            ContainerPark[cont] = "booked";
+                        }
                     }
                 }
 
@@ -789,6 +832,26 @@ namespace ContainerLine
                                             }
                                             Console.ReadKey();
                                             break;
+                                        case 3:
+                                            Console.WriteLine("Please enter Purchase Rent Order number: ");
+                                            int number = Convert.ToInt32((Console.ReadLine()));
+
+                                            Console.WriteLine("Please enter Close date: ");
+                                            DateTime closeDate = Convert.ToDateTime((Console.ReadLine()));
+
+                                            PurchaseRentOrder var = purchaseRentOrders.Find(x => x.OrderNumber == number);
+
+                                            if (var != null)
+                                            {
+
+                                                expenses.Add(ClosePurchaseRentOrder(ContainerPark, var, number, closeDate));
+                                                Console.WriteLine($"Purchase Rent Order {number} closed!");
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine($"Purchase Rent Order {number} is not found!");
+                                            }
+                                            break;
                                         case 4:
                                             List<Container> conts = NewContLot();
                                             Company company2 = NewCompany();
@@ -822,17 +885,17 @@ namespace ContainerLine
                                             break;
                                         case 9:
                                             Console.WriteLine("Please enter Customer Rent Order number: ");
-                                            int number = Convert.ToInt32((Console.ReadLine()));
+                                            number = Convert.ToInt32((Console.ReadLine()));
 
                                             Console.WriteLine("Please enter Close date: ");
-                                            DateTime closeDate = Convert.ToDateTime((Console.ReadLine()));
+                                            closeDate = Convert.ToDateTime((Console.ReadLine()));
 
-                                            CustomerRentOrder var = customerRentOrders.Find(x => x.OrderNumber == number);
+                                            CustomerRentOrder var2 = customerRentOrders.Find(x => x.OrderNumber == number);
 
-                                            if (var != null)
+                                            if (var2 != null)
                                             {
 
-                                                incomes.Add(CloseCustomerRentOrder(ContainerPark, var, number, closeDate));
+                                                incomes.Add(CloseCustomerRentOrder(ContainerPark, var2, number, closeDate));
                                             }
                                             else
                                             {
@@ -846,6 +909,156 @@ namespace ContainerLine
                                                 Console.WriteLine(cont.Key + " Status: " + cont.Value);
                                             }
                                             Console.ReadKey();
+                                            break;
+                                        case 11:
+                                            Console.Clear();
+                                            Console.WriteLine("Please enter container number: ");
+                                            string cont_temp = Console.ReadLine();
+
+                                            foreach (var cont in ContainerPark)
+                                            {
+                                                if (cont.Key.ContNumber == cont_temp)
+                                                {
+                                                    Console.WriteLine("\nContainer is found!");
+                                                    Console.WriteLine(cont.Key + " Status " + cont.Value );
+                                                    break;
+                                                }
+                                            }
+                                            foreach (var order in purchaseRentOrders)
+                                            {
+                                                Container temp2 = order.Containers.Find(x => x.ContNumber == cont_temp);
+
+                                                if (temp2 != null)
+                                                {
+                                                    Console.WriteLine("\nPurchase Rent Order:");
+                                                    Console.WriteLine(order);
+                                                }
+                                            }
+                                            foreach (var order in salesOrders)
+                                            {
+                                                Container temp2 = order.Containers.Find(x => x.ContNumber == cont_temp);
+
+                                                if (temp2 != null)
+                                                {
+                                                    Console.WriteLine("\nSale Order:");
+                                                    Console.WriteLine(order);
+                                                }
+                                            }
+                                            foreach (var order in customerRentOrders)
+                                            {
+                                                Container temp2 = order.Containers.Find(x => x.ContNumber == cont_temp);
+
+                                                if (temp2 != null)
+                                                {
+                                                    Console.WriteLine("\nCustomer Rent Order:");
+                                                    Console.WriteLine(order);
+                                                }
+                                            }
+
+                                            Console.ReadKey();
+                                            break;
+                                        case 12:
+                                            Console.Clear();
+
+                                            Console.Write("Please enter start date of report: ");
+                                            DateTime reportStartDate = Convert.ToDateTime(Console.ReadLine());
+
+                                            Console.Write("Please enter end day of report: ");
+                                            DateTime reportEndDate = Convert.ToDateTime(Console.ReadLine());
+
+                                            List<Income> reportIncomes = new List<Income>();
+                                            List<Expense> reportExpenses = new List<Expense>();
+
+                                            DateTime docStartDate;
+                                            DateTime docEndDate;
+                                            DateTime SalesOrderEndDate;
+
+                                            if (reportStartDate < reportEndDate)
+                                            {
+                                                foreach (var order in purchaseRentOrders)
+                                                {
+                                                    if (order.OrderDate > reportEndDate || (order.CloseDate != default && order.CloseDate < reportStartDate))
+                                                        continue;
+                                                    else
+                                                    {
+                                                        docStartDate = reportStartDate > order.OrderDate ? reportStartDate: order.OrderDate;
+
+                                                        if (order.CloseDate == default)
+                                                        {             
+                                                            docEndDate = reportEndDate;
+                                                        }
+                                                        else
+                                                        {
+                                                            docEndDate = reportEndDate < order.CloseDate ? reportEndDate: order.CloseDate;
+                                                        }
+
+                                                        reportExpenses.Add(new Expense(docStartDate, docEndDate, order));
+                                                    }
+                                                }
+                                                foreach (var salesOrder in salesOrders)
+                                                {
+                                                    SalesOrderEndDate = salesOrder.OrderDate.AddDays(Global.DepretiationTime);
+
+                                                    if (salesOrder.OrderDate > reportEndDate || SalesOrderEndDate < reportStartDate)
+                                                        continue;
+                                                    else
+                                                    {
+                                                        docStartDate = reportStartDate > salesOrder.OrderDate ? reportStartDate: salesOrder.OrderDate;
+                                                        docEndDate = reportEndDate < SalesOrderEndDate ? reportEndDate : SalesOrderEndDate;
+
+                                                        reportExpenses.Add(new Expense(salesOrder, docStartDate, docEndDate));
+                                                    }
+                                                }
+                                                foreach (var order in customerRentOrders)
+                                                {
+                                                    if (order.OrderDate > reportEndDate || (order.CloseDate != default && order.CloseDate < reportStartDate))
+                                                        continue;
+                                                    else
+                                                    {
+                                                        docStartDate = reportStartDate > order.OrderDate ? reportStartDate: order.OrderDate;
+
+                                                        if (order.CloseDate == default)
+                                                        {
+                                                            docEndDate = reportEndDate;
+                                                        }
+                                                        else
+                                                        {
+                                                            docEndDate = reportEndDate < order.CloseDate ? reportEndDate : order.CloseDate;
+                                                        }
+
+                                                        reportIncomes.Add(new Income(docStartDate, docEndDate, order));
+                                                    }
+                                                }
+
+                                                Console.WriteLine($"\nP&L report from {reportStartDate.ToShortDateString()} till {reportEndDate.ToShortDateString()}");
+
+                                                Console.WriteLine("\nIncomes:");
+                                                decimal sumIncome = 0; 
+                                                foreach (var income in reportIncomes)
+                                                {
+                                                    Console.WriteLine(income);
+                                                    sumIncome += income.DocumentAmount;
+                                                }
+                                                Console.WriteLine($"Total revenue: {Math.Round(sumIncome, 2)}");
+
+                                                Console.WriteLine("\nExpenses:");
+                                                Console.WriteLine();
+                                                decimal sumCosts = 0;
+                                                foreach (var expense in reportExpenses)
+                                                {
+                                                    Console.WriteLine(expense);
+                                                    sumCosts += expense.DocumentAmount;
+                                                }
+                                                Console.WriteLine($"Total costs: {Math.Round(sumCosts, 2)}");
+
+                                                Console.WriteLine($"\nGross Profit: {Math.Round(sumIncome - sumCosts, 2)}");
+                                                Console.ReadKey();
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("Start date is bigger than end one");
+                                            }
+
                                             break;
                                     }
                                     
