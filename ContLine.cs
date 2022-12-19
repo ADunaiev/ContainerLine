@@ -12,8 +12,7 @@ using System.CodeDom;
 //Задание GOL Container Line
 //Создать приложение GOL Container Line
 //Основная задача проекта создать приложение позволяющее компании следить за собственным и 
-//арендованным контейнерным оборудованием. Оценивать прибыльность проекта в разрезе 
-//контейнера.
+//арендованным контейнерным оборудованием. 
 //Интерфейс приложения должен позволять следующие возможности:
 //■ При старте приложения пользователь вводит логин и пароль для входа. Если пользователь не
 //зарегистрирован, он должен пройти процесс регистрации. 
@@ -25,46 +24,20 @@ using System.CodeDom;
 //▪ Возможность внесения номеров, типов, грузоподъемности, собственника
 //▪ Состояние контейнера
 //▪ Условия приобретения или аренды
-
 //▪ Расчет амортизации.
-
 //o Посмотреть все контейнеры в оперировании
-//▪ Возможность внесения номеров, типов, грузоподъемности, собственника
-//▪ Состояние контейнера
-//▪ Условия приобретения или аренды
 //o Вывести контейнеры(лот контейнеров) из учета
-//• изменить настройки: можно менять пароль и дату рождения
 //• Регистрация сделок по передачу контейнеров в перевозку
-//o Котировка ставок
 //▪ Возможность выборки по нужному типу и грузоподъемности контейнеров
 //▪ Отображение себестоимости (аммортизации контейнера в день/месяц)
-//▪ Расчет продажной ставки с учетом заданной ставки рентабельности.
-//o Регистрация букинга
-//▪ Номер букинга
-//▪ Маршрут перевозки
 //▪ Количество контейнеров
 //▪ Стоимость использования контейнеров
-//▪ Условия сверхнормативного использования контейнеров
-//o Контроль за ходом выполнения активных букингов
-//▪ Дата начала перевозки
-//▪ Возможность регистрации промежуточных дат и локаций контейнера
 //▪ Дата завершения перевозки
 //o Завершение перевозки
 //▪ Начисления дохода по контейнеру
-//▪ Проверка и довыставление дохода за сверхнормативное использование 
-//контейнера
-//• Косвенные расходы
-//o Внесение расходов и привязка их к контейнерам:
-//▪ по переадресации порожних контейнеров
-//▪ По хранению порожних контейнеров
-//▪ ПРР порожних контейнеров
 //▪ Аренда контейнеров
 //▪ Приобретение контейнеров
-//• Вывод финансового результата за все контейнеры за период
-//o За месяц
-//o За квартал
-//o За год
-//• Вывод финансового результата в разрезе контейнера (лота контейнеров)
+//• Вывод финансового результата за период
 
 namespace ContainerLine
 {
@@ -162,14 +135,31 @@ namespace ContainerLine
         }
     }
     [Serializable]
-    public class FinDocument:IComparable<FinDocument> 
+    public abstract class FinDocument:IComparable<FinDocument> 
     {
         public int DocumentNumber { get; set; }
         public DateTime DocumentDate { get; set; }
         public decimal DocumentAmount { get; set; }
         public int CompareTo(FinDocument other)
         {
-            return DocumentDate.CompareTo(other.DocumentDate);
+            int temp = 0;
+            int i1 = DocumentNumber.CompareTo(other.DocumentNumber);
+            int i2 = DocumentDate.CompareTo(other.DocumentDate);
+            int i3 = DocumentAmount.CompareTo(other.DocumentAmount);
+
+            if (i2 != 0)
+                temp = i2;
+            else
+            {
+                if (i1 != 0)
+                    temp = i1;
+                else
+                {
+                    if (i3 != 0) temp = i3;
+                    else temp = 1;
+                }
+            }
+            return temp;
         }
         public override string ToString()
         {
@@ -181,18 +171,22 @@ namespace ContainerLine
     [Serializable]
     public class Income : FinDocument
     {
+        public Order IncomeOrder { get; set; }
         public Income(int number, DateTime date, CustomerRentOrder custRentOrder)
         {
+            IncomeOrder= custRentOrder;
             DocumentNumber= number;
             DocumentDate= date;
             DocumentAmount = custRentOrder.PricePerDay *
-                (custRentOrder.Validity - custRentOrder.OrderDate).Days;
+                (custRentOrder.Validity - custRentOrder.OrderDate).Days * custRentOrder.Containers.Count;
         }
         public Income(DateTime startDate, DateTime endDate, CustomerRentOrder custRentOrder)
         {
+            IncomeOrder= custRentOrder;
             DocumentNumber = 0;
             DocumentDate= endDate;
-            DocumentAmount = (endDate - startDate).Days * custRentOrder.PricePerDay;
+            DocumentAmount = (endDate - startDate).Days * custRentOrder.PricePerDay *
+                custRentOrder.Containers.Count;
         }
         public Income()
         {
@@ -206,29 +200,33 @@ namespace ContainerLine
     [Serializable]
     public class Expense : FinDocument
     {
+        public Order ExpenseOrder { get; set; }
         public Expense(int number, DateTime date, PurchaseRentOrder rentOrder)
         {
+            ExpenseOrder= rentOrder;
             DocumentNumber = number;
             DocumentDate = date;
             DocumentAmount = rentOrder.PricePerDay * 
-                (date - DocumentDate).Days; 
+                (date - DocumentDate).Days * rentOrder.Containers.Count; 
         }
         public Expense(DateTime startDate, DateTime endDate, PurchaseRentOrder rentOrder)
         {
+            ExpenseOrder= rentOrder;
             DocumentNumber = 0;
             DocumentDate = endDate;
             DateTime tempDate = startDate > rentOrder.CloseDate ? startDate : rentOrder.CloseDate;
-            DocumentAmount = rentOrder.PricePerDay * (endDate - tempDate).Days;
+            DocumentAmount = rentOrder.PricePerDay * (endDate - tempDate).Days * rentOrder.Containers.Count;
         }
         public Expense(SalesOrder salesOrder, DateTime startDate, DateTime endDate)
         {
+            ExpenseOrder= salesOrder;
             DocumentNumber = 0;
             DateTime startTemp = startDate >= salesOrder.OrderDate ? startDate : salesOrder.OrderDate;
             DateTime endTemp = endDate <= salesOrder.OrderDate.AddDays(Global.DepretiationTime) ?
                 endDate : salesOrder.OrderDate.AddDays(Global.DepretiationTime);
             DocumentDate = endTemp;
             decimal price = salesOrder.SellerPrice / Global.DepretiationTime;
-            DocumentAmount = (endTemp- startTemp).Days * price;
+            DocumentAmount = (endTemp- startTemp).Days * price * salesOrder.Containers.Count;
         }
         public Expense() { }
         public override string ToString()
@@ -369,13 +367,12 @@ namespace ContainerLine
             Console.WriteLine("3. Close Rent Order");
             Console.WriteLine("4. Create new Sale Order in database");
             Console.WriteLine("5. View all existing Sale Orders");
-            Console.WriteLine("6. Close Sale Order");
-            Console.WriteLine("7. Create new Customer Rent Order in database");
-            Console.WriteLine("8. View all existing Customer Rent Orders");
-            Console.WriteLine("9. Close Customer Rent Order");
-            Console.WriteLine("10. View container park");
-            Console.WriteLine("11. Find container");
-            Console.WriteLine("12. Create financial report");
+            Console.WriteLine("6. Create new Customer Rent Order in database");
+            Console.WriteLine("7. View all existing Customer Rent Orders");
+            Console.WriteLine("8. Close Customer Rent Order");
+            Console.WriteLine("9. View container park");
+            Console.WriteLine("10. Find container");
+            Console.WriteLine("11. Create financial report");
 
             Console.WriteLine("0. Exit main menu\n");
             Console.Write("Your choice: ");
@@ -867,7 +864,7 @@ namespace ContainerLine
                                             }
                                             Console.ReadKey();
                                             break;
-                                        case 7:
+                                        case 6:
                                             Company company3 = NewCompany();
                                             CustomerRentOrder cro = NewCustomerRentOrder(ContainerPark, company3);
                                             if (cro != null)
@@ -876,14 +873,14 @@ namespace ContainerLine
                                                 companies.Add(company3);
                                             }
                                             break;
-                                        case 8:
+                                        case 7:
                                             foreach (var order in customerRentOrders)
                                             {
                                                 Console.WriteLine(order + "\n");
                                             }
                                             Console.ReadKey();
                                             break;
-                                        case 9:
+                                        case 8:
                                             Console.WriteLine("Please enter Customer Rent Order number: ");
                                             number = Convert.ToInt32((Console.ReadLine()));
 
@@ -903,14 +900,14 @@ namespace ContainerLine
                                             }
 
                                             break;
-                                        case 10:
+                                        case 9:
                                             foreach (var cont in ContainerPark)
                                             {
                                                 Console.WriteLine(cont.Key + " Status: " + cont.Value);
                                             }
                                             Console.ReadKey();
                                             break;
-                                        case 11:
+                                        case 10:
                                             Console.Clear();
                                             Console.WriteLine("Please enter container number: ");
                                             string cont_temp = Console.ReadLine();
@@ -957,7 +954,7 @@ namespace ContainerLine
 
                                             Console.ReadKey();
                                             break;
-                                        case 12:
+                                        case 11:
                                             Console.Clear();
 
                                             Console.Write("Please enter start date of report: ");
@@ -968,6 +965,7 @@ namespace ContainerLine
 
                                             List<Income> reportIncomes = new List<Income>();
                                             List<Expense> reportExpenses = new List<Expense>();
+                                            SortedList<int, FinDocument> allDocs = new SortedList<int, FinDocument>();
 
                                             DateTime docStartDate;
                                             DateTime docEndDate;
@@ -975,6 +973,7 @@ namespace ContainerLine
 
                                             if (reportStartDate < reportEndDate)
                                             {
+                                                Counter finCounter = new Counter();
                                                 foreach (var order in purchaseRentOrders)
                                                 {
                                                     if (order.OrderDate > reportEndDate || (order.CloseDate != default && order.CloseDate < reportStartDate))
@@ -991,8 +990,10 @@ namespace ContainerLine
                                                         {
                                                             docEndDate = reportEndDate < order.CloseDate ? reportEndDate: order.CloseDate;
                                                         }
-
-                                                        reportExpenses.Add(new Expense(docStartDate, docEndDate, order));
+                                                        Expense temp1 = new Expense(docStartDate, docEndDate, order);
+                                                        temp1.DocumentNumber = (finCounter++).counter;                          
+                                                        reportExpenses.Add(temp1);
+                                                        allDocs.Add(temp1.DocumentNumber, temp1);
                                                     }
                                                 }
                                                 foreach (var salesOrder in salesOrders)
@@ -1006,7 +1007,10 @@ namespace ContainerLine
                                                         docStartDate = reportStartDate > salesOrder.OrderDate ? reportStartDate: salesOrder.OrderDate;
                                                         docEndDate = reportEndDate < SalesOrderEndDate ? reportEndDate : SalesOrderEndDate;
 
-                                                        reportExpenses.Add(new Expense(salesOrder, docStartDate, docEndDate));
+                                                        Expense temp2 = new Expense(salesOrder, docStartDate, docEndDate);
+                                                        temp2.DocumentNumber = (finCounter++).counter;
+                                                        reportExpenses.Add(temp2);
+                                                        allDocs.Add(temp2.DocumentNumber, temp2);
                                                     }
                                                 }
                                                 foreach (var order in customerRentOrders)
@@ -1026,7 +1030,10 @@ namespace ContainerLine
                                                             docEndDate = reportEndDate < order.CloseDate ? reportEndDate : order.CloseDate;
                                                         }
 
-                                                        reportIncomes.Add(new Income(docStartDate, docEndDate, order));
+                                                        Income temp3 = new Income(docStartDate, docEndDate, order);
+                                                        temp3.DocumentNumber = (finCounter++).counter;
+                                                        reportIncomes.Add(temp3);
+                                                        allDocs.Add(temp3.DocumentNumber, temp3);
                                                     }
                                                 }
 
@@ -1036,7 +1043,14 @@ namespace ContainerLine
                                                 decimal sumIncome = 0; 
                                                 foreach (var income in reportIncomes)
                                                 {
-                                                    Console.WriteLine(income);
+                                                    StringBuilder stringBuilder= new StringBuilder();
+                                                    stringBuilder.Append("Customer Rent Order ");
+                                                    stringBuilder.Append(income.IncomeOrder.OrderNumber.ToString());
+                                                    stringBuilder.Append(" date ");
+                                                    stringBuilder.Append(income.IncomeOrder.OrderDate.ToShortDateString());
+                                                    stringBuilder.Append("\t");
+                                                    stringBuilder.Append(Math.Round((income.DocumentAmount),2).ToString());
+                                                    Console.WriteLine(stringBuilder.ToString());
                                                     sumIncome += income.DocumentAmount;
                                                 }
                                                 Console.WriteLine($"Total revenue: {Math.Round(sumIncome, 2)}");
@@ -1046,7 +1060,14 @@ namespace ContainerLine
                                                 decimal sumCosts = 0;
                                                 foreach (var expense in reportExpenses)
                                                 {
-                                                    Console.WriteLine(expense);
+                                                    StringBuilder stringBuilder = new StringBuilder();
+                                                    stringBuilder.Append("Expense Order ");
+                                                    stringBuilder.Append(expense.ExpenseOrder.OrderNumber.ToString());
+                                                    stringBuilder.Append(" date ");
+                                                    stringBuilder.Append(expense.ExpenseOrder.OrderDate.ToShortDateString());
+                                                    stringBuilder.Append("\t");
+                                                    stringBuilder.Append(Math.Round(expense.DocumentAmount,2).ToString());
+                                                    Console.WriteLine(stringBuilder.ToString());
                                                     sumCosts += expense.DocumentAmount;
                                                 }
                                                 Console.WriteLine($"Total costs: {Math.Round(sumCosts, 2)}");
